@@ -5,12 +5,15 @@ from app.database.session import engine
 
 from app.api.v1.endpoints.auth import router as auth_router
 
+from app.api.v1.endpoints import category
+
 app = FastAPI(
     title="Expense Tracker API",
     version="1.0.0"
 )
 
 app.include_router(auth_router)
+app.include_router(category.router)
 
 @app.get("/")
 def root():
