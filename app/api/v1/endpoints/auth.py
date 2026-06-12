@@ -9,6 +9,9 @@ from app.schemas.user import UserCreate
 from app.schemas.user import UserResponse
 from app.services.auth_service import AuthService
 
+from app.schemas.user import UserLogin
+from app.schemas.user import TokenResponse
+
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
@@ -32,5 +35,25 @@ def register(
     except ValueError as e:
         raise HTTPException(
             status_code=400,
+            detail=str(e)
+        )
+@router.post(
+    "/login",
+    response_model=TokenResponse
+)
+def login(
+    request: UserLogin,
+    db: Session = Depends(get_db)
+):
+    try:
+        return AuthService.login(
+            db,
+            request.email,
+            request.password
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=401,
             detail=str(e)
         )
