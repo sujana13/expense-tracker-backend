@@ -12,6 +12,11 @@ from app.services.auth_service import AuthService
 from app.schemas.user import UserLogin
 from app.schemas.user import TokenResponse
 
+from app.database.dependencies import get_current_user
+from app.models.user import User
+
+from fastapi.security import OAuth2PasswordRequestForm
+
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
@@ -42,14 +47,14 @@ def register(
     response_model=TokenResponse
 )
 def login(
-    request: UserLogin,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     try:
         return AuthService.login(
             db,
-            request.email,
-            request.password
+            form_data.username,
+            form_data.password
         )
 
     except ValueError as e:
@@ -57,3 +62,12 @@ def login(
             status_code=401,
             detail=str(e)
         )
+
+@router.get(
+    "/me",
+    response_model=UserResponse
+)
+def get_me(
+    current_user: User = Depends(get_current_user)
+):
+    return current_user
