@@ -14,6 +14,7 @@ from app.schemas.expense import ExpenseResponse
 
 from app.services.expense_service import ExpenseService
 
+from app.schemas.expense import ExpenseUpdate
 
 router = APIRouter(
     prefix="/expenses",
@@ -87,6 +88,28 @@ def delete_expense(
         return {
             "message": "Expense deleted successfully"
         }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+@router.put(
+    "/{expense_id}",
+    response_model=ExpenseResponse
+)
+def update_expense(
+    expense_id: str,
+    request: ExpenseUpdate,
+    db: Session = Depends(get_db)
+):
+    try:
+        return ExpenseService.update(
+            db,
+            expense_id,
+            request
+        )
 
     except ValueError as e:
         raise HTTPException(

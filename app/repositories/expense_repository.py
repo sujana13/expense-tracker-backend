@@ -40,3 +40,13 @@ class ExpenseRepository:
     ):
         db.delete(expense)
         db.commit()
+
+    @staticmethod
+    def update(
+        db: Session,
+        expense: Expense
+    ):
+        db.commit()
+        db.refresh(expense)
+
+        return expense

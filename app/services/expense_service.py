@@ -9,6 +9,8 @@ from app.repositories.category_repository import CategoryRepository
 from app.schemas.expense import ExpenseCreate
 from app.schemas.expense import ExpenseUpdate
 
+from app.schemas.expense import ExpenseUpdate
+
 
 class ExpenseService:
 
@@ -85,3 +87,41 @@ class ExpenseService:
             db,
             expense
         )
+
+    @staticmethod
+    def update(
+        db: Session,
+        expense_id: str,
+        request: ExpenseUpdate
+    ):
+        expense = ExpenseRepository.get_by_id(
+        db,
+        expense_id
+    )
+
+        if not expense:
+            raise ValueError(
+            "Expense not found"
+        )
+
+        category = CategoryRepository.get_by_id(
+                 db,
+                 request.category_id
+    )
+
+        if not category:
+             raise ValueError(
+                 "Category not found"
+        )
+
+        expense.title = request.title
+        expense.description = request.description
+        expense.amount = request.amount
+        expense.expense_date = request.expense_date
+        expense.payment_method = request.payment_method
+        expense.category_id = request.category_id
+
+        return ExpenseRepository.update(
+        db,
+        expense
+    )
