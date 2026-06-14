@@ -9,6 +9,7 @@ from app.schemas.dashboard import DashboardSummary
 
 from app.services.dashboard_service import DashboardService
 
+from app.schemas.dashboard import CategorySummary
 
 router = APIRouter(
     prefix="/dashboard",
@@ -24,5 +25,16 @@ def get_summary(
     db: Session = Depends(get_db)
 ):
     return DashboardService.get_summary(
+        db
+    )
+
+@router.get(
+    "/category-summary",
+    response_model=list[CategorySummary]
+)
+def get_category_summary(
+    db: Session = Depends(get_db)
+):
+    return DashboardService.get_category_summary(
         db
     )

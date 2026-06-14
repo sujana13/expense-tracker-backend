@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.expense import Expense
 
+from app.models.category import Category
 
 class DashboardService:
 
@@ -57,3 +58,33 @@ class DashboardService:
             "expense_count": expense_count,
             "this_month_total": this_month_total
         }
+
+    @staticmethod
+    def get_category_summary(
+        db: Session
+         ):
+        results = (
+                db.query(
+                Category.name,
+                func.coalesce(
+                func.sum(Expense.amount),
+                0
+                )
+             )
+        .join(
+                Expense,
+                Expense.category_id == Category.id
+            )
+        .group_by(
+                Category.name
+            )
+        .all()
+            )
+
+        return [
+            {
+                "category": row[0],
+                "total_amount": row[1]
+            }
+        for row in results
+    ]
