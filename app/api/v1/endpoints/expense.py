@@ -14,7 +14,10 @@ from app.schemas.expense import ExpenseResponse
 
 from app.services.expense_service import ExpenseService
 
-from app.schemas.expense import ExpenseUpdate
+from app.schemas.expense import ExpenseUpdate 
+
+from datetime import date
+from fastapi import Query
 
 router = APIRouter(
     prefix="/expenses",
@@ -48,8 +51,26 @@ def create_expense(
     response_model=list[ExpenseResponse]
 )
 def get_expenses(
+    category_id: str | None = Query(None),
+    payment_method: str | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db: Session = Depends(get_db)
 ):
+    if (
+        category_id
+        or payment_method
+        or start_date
+        or end_date
+    ):
+        return ExpenseService.filter_expenses(
+            db,
+            category_id,
+            payment_method,
+            start_date,
+            end_date
+        )
+
     return ExpenseService.get_all(db)
 
 @router.get(

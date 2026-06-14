@@ -11,6 +11,8 @@ from app.schemas.expense import ExpenseUpdate
 
 from app.schemas.expense import ExpenseUpdate
 
+from datetime import date
+
 
 class ExpenseService:
 
@@ -125,3 +127,19 @@ class ExpenseService:
         db,
         expense
     )
+
+    @staticmethod
+    def filter_expenses(
+        db: Session,
+        category_id: str | None = None,
+        payment_method: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None
+    ):
+        return ExpenseRepository.filter_expenses(
+            db,
+            category_id,
+            payment_method,
+            start_date,
+            end_date
+        )

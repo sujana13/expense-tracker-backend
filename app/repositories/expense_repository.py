@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models.expense import Expense
-
+from datetime import date
 
 class ExpenseRepository:
 
@@ -49,4 +49,36 @@ class ExpenseRepository:
         db.commit()
         db.refresh(expense)
 
-        return expense
+        return expense 
+
+    @staticmethod
+    def filter_expenses(
+        db: Session,
+        category_id: str | None = None,
+        payment_method: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None
+    ):
+        query = db.query(Expense)
+
+        if category_id:
+            query = query.filter(
+                Expense.category_id == category_id
+            )
+
+        if payment_method:
+            query = query.filter(
+                Expense.payment_method == payment_method
+            )
+
+        if start_date:
+            query = query.filter(
+                Expense.expense_date >= start_date
+            )
+
+        if end_date:
+            query = query.filter(
+                Expense.expense_date <= end_date
+            )
+
+        return query.all()
