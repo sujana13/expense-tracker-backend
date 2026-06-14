@@ -88,3 +88,19 @@ class DashboardService:
             }
         for row in results
     ]
+
+    @staticmethod
+    def get_recent_expenses(
+        db: Session,
+        limit: int = 5
+    ):
+        expenses = (
+            db.query(Expense)
+            .order_by(
+            Expense.created_at.desc()
+        )
+        .limit(limit)
+        .all()
+    )
+
+        return expenses
