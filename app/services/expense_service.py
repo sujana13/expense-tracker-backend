@@ -13,6 +13,9 @@ from app.schemas.expense import ExpenseUpdate
 
 from datetime import date
 
+import csv
+from io import StringIO
+
 
 class ExpenseService:
 
@@ -143,3 +146,38 @@ class ExpenseService:
             start_date,
             end_date
         )
+
+    @staticmethod
+    def export_csv(
+        db: Session
+    ):
+        expenses = (
+            ExpenseRepository.get_all_for_export(
+            db
+        )
+        )
+
+        output = StringIO()
+
+        writer = csv.writer(
+        output
+        )
+
+        writer.writerow([
+            "Title",
+            "Description",
+            "Amount",
+            "Payment Method",
+            "Expense Date"
+        ])
+
+        for expense in expenses:
+            writer.writerow([
+                expense.title,
+                expense.description,
+                expense.amount,
+                expense.payment_method,
+                expense.expense_date
+            ])
+
+        return output.getvalue()

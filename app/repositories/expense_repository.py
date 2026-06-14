@@ -82,3 +82,15 @@ class ExpenseRepository:
             )
 
         return query.all()
+
+    @staticmethod
+    def get_all_for_export(
+        db: Session
+    ):
+        return (
+            db.query(Expense)
+            .order_by(
+            Expense.expense_date.desc()
+        )
+        .all()
+    )

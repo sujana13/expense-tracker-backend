@@ -19,6 +19,8 @@ from app.schemas.expense import ExpenseUpdate
 from datetime import date
 from fastapi import Query
 
+from fastapi.responses import Response
+
 router = APIRouter(
     prefix="/expenses",
     tags=["Expenses"]
@@ -72,6 +74,27 @@ def get_expenses(
         )
 
     return ExpenseService.get_all(db)
+
+@router.get(
+    "/export"
+)
+def export_expenses(
+    db: Session = Depends(get_db)
+):
+    csv_data = (
+        ExpenseService.export_csv(
+            db
+        )
+    )
+
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition":
+            "attachment; filename=expenses.csv"
+        }
+    )
 
 @router.get(
     "/{expense_id}",
