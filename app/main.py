@@ -9,6 +9,8 @@ from app.api.v1.endpoints import category
 
 from app.api.v1.endpoints import expense
 
+from app.api.v1.endpoints import dashboard
+
 app = FastAPI(
     title="Expense Tracker API",
     version="1.0.0"
@@ -17,6 +19,7 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(category.router)
 app.include_router(expense.router)
+app.include_router(dashboard.router)
 
 @app.get("/")
 def root():
