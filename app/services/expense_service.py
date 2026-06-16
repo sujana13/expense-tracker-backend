@@ -137,14 +137,16 @@ class ExpenseService:
         category_id: str | None = None,
         payment_method: str | None = None,
         start_date: date | None = None,
-        end_date: date | None = None
+        end_date: date | None = None,
+        search: str | None = None
     ):
         return ExpenseRepository.filter_expenses(
             db,
             category_id,
             payment_method,
             start_date,
-            end_date
+            end_date,
+            search
         )
 
     @staticmethod

@@ -57,20 +57,23 @@ def get_expenses(
     payment_method: str | None = Query(None),
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
+    search: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
     if (
-        category_id
-        or payment_method
-        or start_date
-        or end_date
-    ):
+    category_id
+    or payment_method
+    or start_date
+    or end_date
+    or search
+):
         return ExpenseService.filter_expenses(
             db,
             category_id,
             payment_method,
             start_date,
-            end_date
+            end_date,
+            search
         )
 
     return ExpenseService.get_all(db)

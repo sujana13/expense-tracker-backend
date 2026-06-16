@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from app.models.expense import Expense
 from datetime import date
 
+from sqlalchemy import or_
+
 class ExpenseRepository:
 
     @staticmethod
@@ -57,8 +59,9 @@ class ExpenseRepository:
         category_id: str | None = None,
         payment_method: str | None = None,
         start_date: date | None = None,
-        end_date: date | None = None
-    ):
+        end_date: date | None = None,
+        search: str | None = None
+        ):
         query = db.query(Expense)
 
         if category_id:
@@ -80,6 +83,21 @@ class ExpenseRepository:
             query = query.filter(
                 Expense.expense_date <= end_date
             )
+
+        if search:
+            query = query.filter(
+               or_(
+            Expense.title.ilike(
+                f"%{search}%"
+            ),
+            Expense.description.ilike(
+                f"%{search}%"
+            ),
+            Expense.payment_method.ilike(
+                f"%{search}%"
+            )
+        )
+    )
 
         return query.all()
 
