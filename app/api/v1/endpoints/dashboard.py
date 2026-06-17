@@ -51,3 +51,13 @@ def get_recent_expenses(
     return DashboardService.get_recent_expenses(
         db
     )
+
+@router.get(
+    "/monthly-trend"
+)
+def get_monthly_trend(
+    db: Session = Depends(get_db)
+):
+    return DashboardService.get_monthly_trend(
+        db
+    )

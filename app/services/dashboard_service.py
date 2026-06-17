@@ -104,3 +104,35 @@ class DashboardService:
     )
 
         return expenses
+    @staticmethod
+    def get_monthly_trend(
+        db: Session
+):
+        results = (
+            db.query(
+               func.extract(
+                "month",
+                Expense.expense_date
+            ).label("month"),
+
+            func.coalesce(
+                func.sum(
+                    Expense.amount
+                ),
+                0
+            ).label(
+                "total_amount"
+            )
+        )
+        .group_by("month")
+        .order_by("month")
+        .all()
+    )
+
+        return [
+            {
+               "month": int(row.month),
+               "total_amount": row.total_amount
+            }
+        for row in results
+    ]
