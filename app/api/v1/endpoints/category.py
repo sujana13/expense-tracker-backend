@@ -10,6 +10,8 @@ from app.schemas.category import CategoryUpdate
 from app.schemas.category import CategoryResponse
 from app.services.category_service import CategoryService
 
+from app.core.auth import require_admin
+
 
 router = APIRouter(
     prefix="/categories",
@@ -22,7 +24,8 @@ router = APIRouter(
 )
 def create_category(
     request: CategoryCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin)
 ):
     try:
         return CategoryService.create(
@@ -72,7 +75,8 @@ def get_category(
 def update_category(
     category_id: str,
     request: CategoryUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin)
 ):
     try:
         return CategoryService.update(
@@ -92,7 +96,8 @@ def update_category(
 )
 def delete_category(
     category_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin)
 ):
     try:
         CategoryService.delete(
