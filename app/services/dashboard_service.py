@@ -7,6 +7,10 @@ from app.models.expense import Expense
 
 from app.models.category import Category
 
+from app.models.enums import ExpenseStatus
+
+import calendar
+
 class DashboardService:
 
     @staticmethod
@@ -26,6 +30,33 @@ class DashboardService:
         expense_count = (
             db.query(Expense)
             .count()
+        )
+
+        submitted_count = (
+            db.query(Expense)
+            .filter(
+                Expense.status ==
+                   ExpenseStatus.SUBMITTED
+                )
+            .count()
+            )
+
+        approved_count = (
+            db.query(Expense)
+            .filter(
+                Expense.status ==
+                  ExpenseStatus.APPROVED
+                )
+            .count()
+        )
+
+        rejected_count = (
+            db.query(Expense)
+            .filter(
+               Expense.status ==
+                 ExpenseStatus.REJECTED
+            )
+        .count()
         )
 
         current_month = date.today().month
@@ -56,7 +87,11 @@ class DashboardService:
         return {
             "total_expenses": total_expenses,
             "expense_count": expense_count,
-            "this_month_total": this_month_total
+            "this_month_total": this_month_total,
+
+            "submitted_count": submitted_count,
+            "approved_count": approved_count,
+            "rejected_count": rejected_count
         }
 
     @staticmethod
@@ -104,6 +139,7 @@ class DashboardService:
     )
 
         return expenses
+
     @staticmethod
     def get_monthly_trend(
         db: Session
@@ -131,7 +167,7 @@ class DashboardService:
 
         return [
             {
-               "month": int(row.month),
+               "month": calendar.month_abbr[int(row.month)],
                "total_amount": row.total_amount
             }
         for row in results

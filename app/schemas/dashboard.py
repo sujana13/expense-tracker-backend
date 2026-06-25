@@ -7,6 +7,10 @@ class DashboardSummary(BaseModel):
     expense_count: int
     this_month_total: float
 
+    submitted_count: int
+    approved_count: int
+    rejected_count: int
+
 class CategorySummary(BaseModel):
     category: str
     total_amount: float
