@@ -58,7 +58,8 @@ def get_expenses(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     search: str | None = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     if (
     category_id
@@ -76,7 +77,10 @@ def get_expenses(
             search
         )
 
-    return ExpenseService.get_all(db)
+    return ExpenseService.get_all(
+    db,
+    current_user
+)
 
 @router.get(
     "/export"
@@ -105,12 +109,16 @@ def export_expenses(
 )
 def get_expense(
     expense_id: str,
-    db: Session = Depends(get_db)
-):
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+
+    ):
     try:
         return ExpenseService.get_by_id(
             db,
-            expense_id
+            expense_id,
+                current_user
+
         )
 
     except ValueError as e:
@@ -124,12 +132,14 @@ def get_expense(
 )
 def delete_expense(
     expense_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     try:
         ExpenseService.delete(
             db,
-            expense_id
+            expense_id,
+            current_user
         )
 
         return {
@@ -149,17 +159,63 @@ def delete_expense(
 def update_expense(
     expense_id: str,
     request: ExpenseUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     try:
         return ExpenseService.update(
             db,
             expense_id,
-            request
+            request,
+            current_user
         )
 
     except ValueError as e:
         raise HTTPException(
             status_code=404,
+            detail=str(e)
+        )
+
+@router.post(
+    "/{expense_id}/approve",
+    response_model=ExpenseResponse
+)
+def approve_expense(
+    expense_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        return ExpenseService.approve_expense(
+            db,
+            expense_id,
+            current_user
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+@router.post(
+    "/{expense_id}/reject",
+    response_model=ExpenseResponse
+)
+def reject_expense(
+    expense_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        return ExpenseService.reject_expense(
+            db,
+            expense_id,
+            current_user
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
             detail=str(e)
         )

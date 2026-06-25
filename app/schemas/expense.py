@@ -2,6 +2,9 @@ from datetime import date
 
 from pydantic import BaseModel
 
+from app.models.enums import ExpenseStatus
+
+
 
 class ExpenseCreate(BaseModel):
     title: str
@@ -30,7 +33,7 @@ class ExpenseResponse(BaseModel):
     payment_method: str
     category_id: str
     user_id: str
-
+    status: ExpenseStatus
     model_config = {
         "from_attributes": True
     }

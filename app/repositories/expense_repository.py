@@ -112,3 +112,16 @@ class ExpenseRepository:
         )
         .all()
     )
+
+    @staticmethod
+    def get_by_user_id(
+    db: Session,
+    user_id: str
+    ):
+        return (
+            db.query(Expense)
+            .filter(
+            Expense.user_id == user_id
+            )
+            .all()
+        )

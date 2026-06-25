@@ -13,6 +13,7 @@ from app.api.v1.endpoints import dashboard
 
 from fastapi.middleware.cors import CORSMiddleware
 
+
 app = FastAPI(
     title="Expense Tracker API",
     version="1.0.0"

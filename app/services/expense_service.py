@@ -13,6 +13,12 @@ from app.schemas.expense import ExpenseUpdate
 
 from datetime import date
 
+from app.core.permissions import is_admin
+from app.models.expense import Expense
+
+from app.models.enums import ExpenseStatus
+from app.core.permissions import is_admin_or_manager
+
 import csv
 from io import StringIO
 
@@ -52,15 +58,24 @@ class ExpenseService:
 
     @staticmethod
     def get_all(
-        db: Session
+    db: Session,
+    current_user: User
     ):
-        return ExpenseRepository.get_all(db)
+        if is_admin(current_user):
+            return ExpenseRepository.get_all(db)
+
+        return ExpenseRepository.get_by_user_id(
+             db,
+             current_user.id
+            )
 
     @staticmethod
     def get_by_id(
         db: Session,
-        expense_id: str
-    ):
+        expense_id: str,
+        current_user: User
+        ):
+            
         expense = ExpenseRepository.get_by_id(
             db,
             expense_id
@@ -69,6 +84,11 @@ class ExpenseService:
         if not expense:
             raise ValueError(
                 "Expense not found"
+            )
+
+        ExpenseService.validate_expense_access(
+            expense,
+            current_user
             )
 
         return expense
@@ -76,7 +96,8 @@ class ExpenseService:
     @staticmethod
     def delete(
         db: Session,
-        expense_id: str
+        expense_id: str,
+        current_user: User
     ):
         expense = ExpenseRepository.get_by_id(
             db,
@@ -87,6 +108,11 @@ class ExpenseService:
             raise ValueError(
                 "Expense not found"
             )
+
+        ExpenseService.validate_expense_access(
+            expense,
+            current_user
+        )
 
         ExpenseRepository.delete(
             db,
@@ -95,9 +121,10 @@ class ExpenseService:
 
     @staticmethod
     def update(
-        db: Session,
-        expense_id: str,
-        request: ExpenseUpdate
+    db: Session,
+    expense_id: str,
+    request: ExpenseUpdate,
+    current_user: User
     ):
         expense = ExpenseRepository.get_by_id(
         db,
@@ -107,6 +134,11 @@ class ExpenseService:
         if not expense:
             raise ValueError(
             "Expense not found"
+        )
+
+        ExpenseService.validate_expense_access(
+            expense,
+            current_user
         )
 
         category = CategoryRepository.get_by_id(
@@ -183,3 +215,82 @@ class ExpenseService:
             ])
 
         return output.getvalue()
+
+    @staticmethod
+    def validate_expense_access(
+    expense: Expense,
+    current_user: User
+    ):
+        if is_admin(current_user):
+            return
+
+        if expense.user_id != current_user.id:
+            raise ValueError(
+               "Access denied"
+        )
+
+    @staticmethod
+    def approve_expense(
+        db: Session,
+        expense_id: str,
+        current_user: User
+    ):
+        if not is_admin_or_manager(current_user):
+            raise ValueError(
+               "Manager/Admin access required"
+        )
+
+        expense = ExpenseRepository.get_by_id(
+            db,
+            expense_id
+        )
+
+        if not expense:
+            raise ValueError(
+            "Expense not found"
+        )
+
+        if expense.status != ExpenseStatus.SUBMITTED:
+            raise ValueError(
+            "Expense already processed"
+        )
+
+        expense.status = ExpenseStatus.APPROVED
+
+        return ExpenseRepository.update(
+           db,
+           expense
+        )
+
+    @staticmethod
+    def reject_expense(
+        db: Session,
+        expense_id: str,
+        current_user: User
+    ):
+        if not is_admin_or_manager(current_user):
+            raise ValueError(
+            "Manager/Admin access required"
+        )
+
+        expense = ExpenseRepository.get_by_id(
+           db,
+           expense_id
+        )
+
+        if not expense:
+            raise ValueError(
+            "Expense not found"
+        )
+
+        if expense.status != ExpenseStatus.SUBMITTED:
+            raise ValueError(
+               "Expense already processed"
+        )
+
+        expense.status = ExpenseStatus.REJECTED
+
+        return ExpenseRepository.update(
+            db,
+            expense
+        )

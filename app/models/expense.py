@@ -10,6 +10,9 @@ from sqlalchemy import func
 
 from app.database.base import Base
 
+from sqlalchemy import Enum
+from app.models.enums import ExpenseStatus
+
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -43,6 +46,12 @@ class Expense(Base):
     payment_method = Column(
         String(50),
         nullable=False
+    )
+
+    status = Column(
+    Enum(ExpenseStatus),
+    nullable=False,
+    default=ExpenseStatus.SUBMITTED
     )
 
     category_id = Column(
