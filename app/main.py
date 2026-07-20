@@ -20,12 +20,17 @@ from app.api.v1.endpoints import company
 
 from app.api.v1.endpoints import department
 from app.api.v1.endpoints import position
+from app.utils.seed_admin import seed_admin
 
 
 app = FastAPI(
     title="Expense Tracker API",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def startup_event():
+    seed_admin()
 
 app.add_middleware(
     CORSMiddleware,
