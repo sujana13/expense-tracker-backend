@@ -17,6 +17,8 @@ from app.models.user import User
 
 from fastapi.security import OAuth2PasswordRequestForm
 
+from app.schemas.user import ForgotPasswordRequest
+
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
@@ -29,8 +31,16 @@ router = APIRouter(
 )
 def register(
     request: UserCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+
+    if current_user.role not in ["ADMIN", "MANAGER"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Only Admin and Manager can add employees."
+        )
+
     try:
         return AuthService.register(
             db,
@@ -42,6 +52,7 @@ def register(
             status_code=400,
             detail=str(e)
         )
+        
 @router.post(
     "/login",
     response_model=TokenResponse
@@ -71,3 +82,13 @@ def get_me(
     current_user: User = Depends(get_current_user)
 ):
     return current_user
+
+@router.post("/forgot-password")
+def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    return AuthService.forgot_password(
+        db,
+        request.email
+    )

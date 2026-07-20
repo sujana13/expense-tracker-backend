@@ -22,74 +22,134 @@ from app.core.permissions import is_admin_or_manager
 import csv
 from io import StringIO
 
+import os
+import shutil
+import uuid
+from datetime import datetime
+
+from app.models.enums import UserRole
+
+from app.schemas.user import UserResponse
+from app.models.company import Company
+from app.models.department import Department
+
 
 class ExpenseService:
+
 
     @staticmethod
     def create(
         db: Session,
-        request: ExpenseCreate,
+        title: str,
+        description: str | None,
+        amount: float,
+        expense_date: date,
+        payment_method: str,
+        category_id: str,
+        receipt_path: str | None,
         current_user: User
-    ):
-        category = CategoryRepository.get_by_id(
-            db,
-            request.category_id
-        )
+        ):
+            category = CategoryRepository.get_by_id(
+               db,
+               category_id
+            )
 
-        if not category:
-            raise ValueError(
+            if not category:
+                raise ValueError(
                 "Category not found"
             )
 
-        expense = Expense(
-            title=request.title,
-            description=request.description,
-            amount=request.amount,
-            expense_date=request.expense_date,
-            payment_method=request.payment_method,
-            category_id=request.category_id,
-            user_id=current_user.id
-        )
+            expense = Expense(
+                title=title,
+                description=description,
+                amount=amount,
+                expense_date=expense_date,
+                payment_method=payment_method,
+                category_id=category_id,
+                receipt_path=receipt_path,
+                user_id=current_user.id
+            )
 
-        return ExpenseRepository.create(
-            db,
-            expense
-        )
+            return ExpenseRepository.create(
+               db,
+               expense
+            )
 
+    
     @staticmethod
     def get_all(
-    db: Session,
-    current_user: User
+        db: Session,
+        current_user: User
     ):
-        if is_admin(current_user):
-            return ExpenseRepository.get_all(db)
 
-        return ExpenseRepository.get_by_user_id(
-             db,
-             current_user.id
+        role = str(current_user.role).upper()
+
+    # Admin -> All expenses
+        if role == "ADMIN":
+
+            expenses = ExpenseRepository.get_all(db)
+
+    # Manager -> Only submitted expenses
+        elif role == "MANAGER":
+
+            expenses = ExpenseRepository.get_by_status(
+                db,
+                ExpenseStatus.SUBMITTED
             )
+
+    # Finance -> Approved + Paid
+        elif role == "FINANCE":
+
+            expenses = ExpenseRepository.get_by_status_list(
+                db,
+                [
+                ExpenseStatus.APPROVED
+                ]
+            )
+
+    # Employee -> Own expenses
+        else:
+
+            expenses = ExpenseRepository.get_by_user_id(
+                db,
+                current_user.id
+             )
+
+        return expenses
 
     @staticmethod
     def get_by_id(
         db: Session,
         expense_id: str,
         current_user: User
-        ):
-            
+):
+
         expense = ExpenseRepository.get_by_id(
             db,
             expense_id
-        )
+    )
 
         if not expense:
             raise ValueError(
-                "Expense not found"
-            )
+               "Expense not found"
+        )
 
         ExpenseService.validate_expense_access(
             expense,
             current_user
-            )
+        )
+
+        expense.approved_by_name = (
+            expense.approved_by_user.username
+            if expense.approved_by_user
+            else None
+        )
+
+        expense.rejected_by_name = (
+            expense.rejected_by_user.username
+            if expense.rejected_by_user
+            else None
+         )
 
         return expense
 
@@ -109,6 +169,9 @@ class ExpenseService:
                 "Expense not found"
             )
 
+        if current_user.role != UserRole.EMPLOYEE:
+            raise ValueError("Only employees can delete expenses")
+
         ExpenseService.validate_expense_access(
             expense,
             current_user
@@ -121,20 +184,27 @@ class ExpenseService:
 
     @staticmethod
     def update(
-    db: Session,
-    expense_id: str,
-    request: ExpenseUpdate,
-    current_user: User
-    ):
+       db: Session,
+       expense_id: str,
+       title: str,
+       description: str | None,
+       amount: float,
+       expense_date: date,
+       payment_method: str,
+       category_id: str,
+       receipt_path: str | None,
+       current_user: User
+):
         expense = ExpenseRepository.get_by_id(
-        db,
-        expense_id
-    )
+           db,
+           expense_id
+         )
 
         if not expense:
-            raise ValueError(
-            "Expense not found"
-        )
+            raise ValueError("Expense not found")
+
+        if current_user.role != UserRole.EMPLOYEE:
+            raise ValueError("Only employees can edit expenses")
 
         ExpenseService.validate_expense_access(
             expense,
@@ -142,26 +212,36 @@ class ExpenseService:
         )
 
         category = CategoryRepository.get_by_id(
-                 db,
-                 request.category_id
-    )
-
-        if not category:
-             raise ValueError(
-                 "Category not found"
+            db,
+            category_id
         )
 
-        expense.title = request.title
-        expense.description = request.description
-        expense.amount = request.amount
-        expense.expense_date = request.expense_date
-        expense.payment_method = request.payment_method
-        expense.category_id = request.category_id
+        if not category:
+           raise ValueError("Category not found")
+
+        expense.title = title
+        expense.description = description
+        expense.amount = amount
+        expense.expense_date = expense_date
+        expense.payment_method = payment_method
+        expense.category_id = category_id
+
+   # Update receipt only if a new file was uploaded
+        if receipt_path:
+
+    # Delete old receipt if it exists
+            if (
+                expense.receipt_path
+                and os.path.exists(expense.receipt_path)
+            ):
+                os.remove(expense.receipt_path)
+
+            expense.receipt_path = receipt_path
 
         return ExpenseRepository.update(
-        db,
-        expense
-    )
+            db,
+            expense
+        )
 
     @staticmethod
     def filter_expenses(
@@ -170,48 +250,88 @@ class ExpenseService:
         payment_method: str | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
-        search: str | None = None
+        search: str | None = None,
+        status: str | None = None,
+        current_user: User = None,
+        
     ):
+
+    # Admin & Manager
+        if is_admin_or_manager(current_user):
+            return ExpenseRepository.filter_expenses(
+                db=db,
+                category_id=category_id,
+                payment_method=payment_method,
+                start_date=start_date,
+                end_date=end_date,
+                search=search,
+                status=status,
+            )
+
+        
+    # Finance
+        if current_user.role.upper() == "FINANCE":
+            
+            return ExpenseRepository.filter_expenses(
+                db=db,
+                category_id=category_id,
+                payment_method=payment_method,
+                start_date=start_date,
+                end_date=end_date,
+                search=search,
+                status=status,
+            )
+
+        
+    # Employee
         return ExpenseRepository.filter_expenses(
-            db,
-            category_id,
-            payment_method,
-            start_date,
-            end_date,
-            search
+            db=db,
+            category_id=category_id,
+            payment_method=payment_method,
+            start_date=start_date,
+            end_date=end_date,
+            search=search,
+            status=status,
+            user_id=current_user.id,
         )
 
     @staticmethod
     def export_csv(
-        db: Session
+        db: Session,
+        category: str | None = None,
+        payment_method: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        search: str | None = None,
     ):
-        expenses = (
-            ExpenseRepository.get_all_for_export(
-            db
-        )
+        expenses = ExpenseRepository.filter_expenses(
+            db=db,
+            category_id=category,
+            payment_method=payment_method,
+            start_date=from_date,
+            end_date=to_date,
+            search=search,
         )
 
         output = StringIO()
 
-        writer = csv.writer(
-        output
-        )
+        writer = csv.writer(output)
 
         writer.writerow([
             "Title",
             "Description",
             "Amount",
             "Payment Method",
-            "Expense Date"
+            "Expense Date",
         ])
 
         for expense in expenses:
             writer.writerow([
-                expense.title,
-                expense.description,
-                expense.amount,
-                expense.payment_method,
-                expense.expense_date
+               expense.title,
+               expense.description,
+               expense.amount,
+               expense.payment_method,
+               expense.expense_date,
             ])
 
         return output.getvalue()
@@ -235,10 +355,8 @@ class ExpenseService:
         expense_id: str,
         current_user: User
     ):
-        if not is_admin_or_manager(current_user):
-            raise ValueError(
-               "Manager/Admin access required"
-        )
+        if current_user.role != UserRole.MANAGER:
+            raise ValueError("Manager access required")
 
         expense = ExpenseRepository.get_by_id(
             db,
@@ -256,6 +374,8 @@ class ExpenseService:
         )
 
         expense.status = ExpenseStatus.APPROVED
+        expense.approved_by = current_user.id
+        expense.approved_at = datetime.utcnow()
 
         return ExpenseRepository.update(
            db,
@@ -268,10 +388,8 @@ class ExpenseService:
         expense_id: str,
         current_user: User
     ):
-        if not is_admin_or_manager(current_user):
-            raise ValueError(
-            "Manager/Admin access required"
-        )
+        if current_user.role != UserRole.MANAGER:
+            raise ValueError("Manager access required")
 
         expense = ExpenseRepository.get_by_id(
            db,
@@ -289,8 +407,52 @@ class ExpenseService:
         )
 
         expense.status = ExpenseStatus.REJECTED
+        expense.rejected_by = current_user.id
+        expense.rejected_at = datetime.utcnow()
 
         return ExpenseRepository.update(
             db,
             expense
         )
+
+
+    @staticmethod
+    def mark_as_paid(
+        db: Session,
+        expense_id: str,
+        payment_reference: str,
+        payment_notes: str | None,
+        current_user: User,
+    ):
+        if current_user.role != UserRole.FINANCE:
+            raise ValueError("Finance access required")
+
+        expense = ExpenseRepository.get_by_id(
+            db,
+            expense_id
+        )
+
+        if not expense:
+            raise ValueError("Expense not found")
+
+        if expense.status != ExpenseStatus.APPROVED:
+            raise ValueError(
+               "Only approved expenses can be paid"
+        )
+
+        expense.status = ExpenseStatus.PAID
+
+        expense.paid_by = current_user.id
+        expense.paid_at = datetime.utcnow()
+        expense.payment_reference = payment_reference
+        expense.payment_notes = payment_notes
+
+        return ExpenseRepository.update(
+            db,
+            expense
+         )
+
+    @staticmethod
+    def get_paid_expenses(db: Session):
+
+        return ExpenseRepository.get_paid_expenses(db)

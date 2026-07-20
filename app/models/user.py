@@ -1,15 +1,22 @@
 import uuid
 
-from sqlalchemy import Boolean
-from sqlalchemy import Column
 from sqlalchemy import DateTime
-from sqlalchemy import String
 from sqlalchemy import func
 
 from app.database.base import Base
 
 from sqlalchemy import Enum
 from app.models.enums import UserRole
+
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
+from datetime import date
+from sqlalchemy import (
+    Column,
+    String,
+    Boolean,
+    Date,
+)
 
 
 class User(Base):
@@ -43,9 +50,49 @@ class User(Base):
         nullable=False,
         default=UserRole.EMPLOYEE.value
     )
+
+    position = Column(
+        String(100),
+        nullable=True
+)
+
     is_active = Column(
         Boolean,
         default=True
+    )
+
+    employee_id = Column(String(30), unique=True, nullable=True)
+
+    phone = Column(String(20), nullable=True)
+
+    gender = Column(String(20), nullable=True)
+
+    location = Column(String(150), nullable=True)
+
+    birth_date = Column(Date, nullable=True)
+
+    date_of_joining = Column(Date, nullable=True)
+
+    company_id = Column(
+    String,
+    ForeignKey("companies.id"),
+    nullable=True
+    )
+
+    department_id = Column(
+    String,
+    ForeignKey("departments.id"),
+    nullable=True
+    )
+
+    company = relationship(
+    "Company",
+    back_populates="users"
+    )
+
+    department = relationship(
+    "Department",
+    back_populates="users"
     )
 
     created_at = Column(
@@ -58,3 +105,6 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now()
     )
+
+    
+    

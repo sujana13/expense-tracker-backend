@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 
 from app.models.category import Category
 
+from sqlalchemy.exc import IntegrityError
+
 
 class CategoryRepository:
 
@@ -48,6 +50,13 @@ class CategoryRepository:
     def delete(
         db: Session,
         category: Category
-    ):
-        db.delete(category)
-        db.commit()
+     ):
+        try:
+            db.delete(category)
+            db.commit()
+
+        except IntegrityError:
+            db.rollback()
+            raise ValueError(
+            "Cannot delete category because it is used by existing expenses."
+        )

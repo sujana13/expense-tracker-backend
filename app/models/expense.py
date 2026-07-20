@@ -12,6 +12,7 @@ from app.database.base import Base
 
 from sqlalchemy import Enum
 from app.models.enums import ExpenseStatus
+from sqlalchemy.orm import relationship
 
 
 class Expense(Base):
@@ -49,9 +50,9 @@ class Expense(Base):
     )
 
     status = Column(
-    Enum(ExpenseStatus),
-    nullable=False,
-    default=ExpenseStatus.SUBMITTED
+        Enum(ExpenseStatus),
+        nullable=False,
+        default=ExpenseStatus.SUBMITTED
     )
 
     category_id = Column(
@@ -76,3 +77,123 @@ class Expense(Base):
         server_default=func.now(),
         onupdate=func.now()
     )
+
+    receipt_path = Column(
+        String,
+        nullable=True
+    )
+
+    approved_by = Column(
+        String,
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
+    approved_at = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    rejected_by = Column(
+        String,
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
+    rejected_at = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    rejection_reason = Column(
+        String(500),
+        nullable=True
+    )
+
+    paid_by = Column(
+        String,
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
+    paid_at = Column(
+        DateTime(timezone=True),
+        nullable=True
+)
+
+    payment_reference = Column(
+        String(200),
+        nullable=True
+    )
+
+    payment_notes = Column(
+        String(500),
+        nullable=True
+)    
+
+    approved_by_user = relationship(
+       "User",
+       foreign_keys=[approved_by],
+)
+
+    rejected_by_user = relationship(
+        "User",
+        foreign_keys=[rejected_by],
+)
+    paid_by_user = relationship(
+        "User",
+        foreign_keys=[paid_by]
+)
+
+    submitted_by_user = relationship(
+        "User",
+        foreign_keys=[user_id]
+)
+
+    category = relationship(
+       "Category",
+       foreign_keys=[category_id]
+)
+
+    @property
+    def approved_by_name(self):
+        return (
+            self.approved_by_user.username
+            if self.approved_by_user
+            else None
+        )
+
+
+    @property
+    def rejected_by_name(self):
+        return (
+            self.rejected_by_user.username
+            if self.rejected_by_user
+            else None
+        )
+
+
+    @property
+    def paid_by_name(self):
+        return (
+            self.paid_by_user.username
+            if self.paid_by_user
+            else None
+        )
+     
+
+    @property
+    def submitted_by_name(self):
+        return (
+            self.submitted_by_user.username
+            if self.submitted_by_user
+            else None
+    )
+    
+    @property
+    def category_name(self):
+        return (
+           self.category.name
+           if self.category
+           else None
+        )

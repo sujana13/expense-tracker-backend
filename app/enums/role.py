@@ -5,3 +5,4 @@ class UserRole(str, Enum):
     ADMIN = "ADMIN"
     FINANCE = "FINANCE"
     EMPLOYEE = "EMPLOYEE"
+    

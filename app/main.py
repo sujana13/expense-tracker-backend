@@ -13,6 +13,14 @@ from app.api.v1.endpoints import dashboard
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.staticfiles import StaticFiles
+
+from app.api.v1.endpoints import users
+from app.api.v1.endpoints import company
+
+from app.api.v1.endpoints import department
+from app.api.v1.endpoints import position
+
 
 app = FastAPI(
     title="Expense Tracker API",
@@ -22,7 +30,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "http://localhost:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -33,6 +42,11 @@ app.include_router(auth_router)
 app.include_router(category.router)
 app.include_router(expense.router)
 app.include_router(dashboard.router)
+app.include_router(company.router)
+app.include_router(position.router)
+
+app.include_router(users.router)
+app.include_router(department.router)
 
 @app.get("/")
 def root():
@@ -62,4 +76,10 @@ def db_health():
         return {
             "database": "disconnected",
             "error": str(e)
-        }
+    }
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads"
+)

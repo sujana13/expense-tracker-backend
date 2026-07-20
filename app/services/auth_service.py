@@ -28,10 +28,16 @@ class AuthService:
         user = User(
             username=request.username,
             email=request.email,
-            hashed_password=hash_password(
-                request.password
-            ),
-            role=request.role.value
+            hashed_password=hash_password(request.password),
+            role=request.role.value,
+
+            employee_id=request.employee_id,
+            position=request.position,
+            phone=request.phone,
+            gender=request.gender,
+            location=request.location,
+            birth_date=request.birth_date,
+            date_of_joining=request.date_of_joining,
         )
 
         return UserRepository.create(
@@ -73,4 +79,19 @@ class AuthService:
         return {
             "access_token": token,
             "token_type": "bearer"
+        } 
+
+    @staticmethod
+    def forgot_password(
+        db: Session,
+        email: str
+    ):
+        user = UserRepository.get_by_email(
+            db,
+            email
+        )
+
+    # For security, don't reveal whether the email exists
+        return {
+        "message": "If the email exists, a password reset link has been sent."
         }
