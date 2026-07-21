@@ -15,6 +15,7 @@ def upload_receipt(file):
         file,
         folder="expense-receipts",
         resource_type="auto",
+        type="upload",
+        access_mode="public",
     )
-
     return result["secure_url"]
