@@ -32,6 +32,7 @@ import uuid
 from fastapi.responses import StreamingResponse
 from app.models.enums import UserRole
 from app.schemas.expense import ExpensePayment
+from app.utils.cloudinary_service import upload_receipt
 
 ALLOWED_EXTENSIONS = {
     ".pdf",
@@ -66,39 +67,15 @@ def create_expense(
 
     if receipt and receipt.filename:
 
-        extension = Path(
-            receipt.filename
-        ).suffix.lower()
+        extension = Path(receipt.filename).suffix.lower()
 
         if extension not in ALLOWED_EXTENSIONS:
             raise HTTPException(
-               status_code=400,
-               detail=(
-                "Only PDF, JPG, JPEG and PNG files are allowed."
-            )
-        )
-
-        upload_dir = Path("uploads/receipts")
-        upload_dir.mkdir(
-            parents=True,
-            exist_ok=True
-        )
-
-        extension = Path(receipt.filename).suffix
-
-        unique_filename = (
-            f"{uuid.uuid4()}{extension}"
-)
-
-        file_path = upload_dir / unique_filename
-
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(
-                receipt.file,
-                buffer
+            status_code=400,
+            detail="Only PDF, JPG, JPEG and PNG files are allowed."
             )
 
-        receipt_path = str(file_path)
+        receipt_path = upload_receipt(receipt.file)
 
     try:
 
@@ -298,34 +275,16 @@ def update_expense(
 
     if receipt and receipt.filename:
 
-        extension = Path(
-           receipt.filename
-        ).suffix.lower()
+        extension = Path(receipt.filename).suffix.lower()
 
         if extension not in ALLOWED_EXTENSIONS:
             raise HTTPException(
-               status_code=400,
-               detail=(
-                   "Only PDF, JPG, JPEG and PNG files are allowed."
-                )
-            )
-
-        upload_dir = Path("uploads/receipts")
-        upload_dir.mkdir(parents=True, exist_ok=True)
-
-        extension = Path(receipt.filename).suffix
-
-        unique_filename = (
-           f"{uuid.uuid4()}{extension}"
+            status_code=400,
+            detail="Only PDF, JPG, JPEG and PNG files are allowed."
         )
 
-        file_path = upload_dir / unique_filename
-
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(receipt.file, buffer)
-
-        receipt_path = str(file_path)
-
+        receipt_path = upload_receipt(receipt.file)
+        
     try:
         return ExpenseService.update(
             db=db,
