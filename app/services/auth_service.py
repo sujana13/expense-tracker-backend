@@ -4,25 +4,25 @@ from app.core.security import (hash_password,verify_password,create_access_token
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate
-
+from app.services.email_service import EmailService
 
 class AuthService:
 
     @staticmethod
-    def register(
+    async def register(
         db: Session,
         request: UserCreate
     ):
         existing_user = (
             UserRepository.get_by_email(
-                db,
-                request.email
+               db,
+               request.email
             )
         )
 
         if existing_user:
             raise ValueError(
-                "Email already registered"
+               "Email already registered"
             )
 
         user = User(
@@ -40,10 +40,19 @@ class AuthService:
             date_of_joining=request.date_of_joining,
         )
 
-        return UserRepository.create(
-            db,
-            user
+        created_user = UserRepository.create(
+           db,
+           user
         )
+
+        await EmailService.send_welcome_email(
+            email=created_user.email,
+            username=created_user.username,
+            temp_password=request.password,
+        )
+
+        return created_user
+
 
     @staticmethod
     def login(

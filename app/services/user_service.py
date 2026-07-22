@@ -5,6 +5,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserUpdate
 
 from app.models.user import User
+from sqlalchemy.exc import IntegrityError
 
 from app.core.security import (
     verify_password,
@@ -54,30 +55,70 @@ class UserService:
         )
 
 
+    # @staticmethod
+    # def delete_user(
+    #     db: Session,
+    #     user_id: str
+    # ):
+
+    #     user = UserRepository.get_by_id(
+    #        db,
+    #        user_id
+    #     )
+
+    #     if not user:
+    #         raise ValueError(
+    #            "User not found"
+    #         )
+
+    #     try:
+
+    #         UserRepository.delete(
+    #            db,
+    #            user
+    #         )
+
+    #     except IntegrityError:
+
+    #         raise ValueError(
+    #            "Cannot delete employee because expense records exist. Please deactivate the employee instead."
+    #         )
+
+    #     return {
+    #         "message": "User deleted successfully"
+    #     }
+
+
     @staticmethod
     def delete_user(
-        db: Session,
-        user_id: str
+       db: Session,
+      user_id: str
     ):
 
         user = UserRepository.get_by_id(
-            db,
-            user_id
-        )
+        db,
+        user_id
+    )
 
         if not user:
-            raise ValueError(
-                "User not found"
-            )
+            raise ValueError("User not found")
 
-        UserRepository.delete(
-            db,
-            user
+        try:
+
+            UserRepository.delete(
+               db,
+               user
         )
 
+        except Exception as e:
+
+            db.rollback()
+
+            raise
+
         return {
-            "message": "User deleted successfully"
-        }
+        "message": "User deleted successfully"
+    }
 
     @staticmethod
     def update_user(

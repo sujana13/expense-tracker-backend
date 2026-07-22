@@ -154,6 +154,6 @@ def delete_user(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=404,
+            status_code=400,
             detail=str(e)
         )

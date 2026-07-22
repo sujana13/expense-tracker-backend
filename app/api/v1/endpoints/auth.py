@@ -29,11 +29,19 @@ router = APIRouter(
     "/register",
     response_model=UserResponse
 )
-def register(
+async def register(
     request: UserCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+
+    allowed_domain = "@higheredbpo.co.in"
+
+    if not request.email.lower().endswith(allowed_domain):
+        raise HTTPException(
+           status_code=400,
+           detail=f"Only {allowed_domain} email addresses are allowed."
+       )
 
     if current_user.role not in ["ADMIN", "MANAGER"]:
         raise HTTPException(
@@ -42,7 +50,7 @@ def register(
         )
 
     try:
-        return AuthService.register(
+        return await AuthService.register(
             db,
             request
         )
@@ -52,7 +60,7 @@ def register(
             status_code=400,
             detail=str(e)
         )
-        
+
 @router.post(
     "/login",
     response_model=TokenResponse

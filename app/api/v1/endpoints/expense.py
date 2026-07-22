@@ -131,7 +131,6 @@ def get_expenses(
            status=status,
            current_user=current_user,
 )
-        print("status =", status)
     return ExpenseService.get_all(
     db,
     current_user
@@ -164,10 +163,7 @@ def export_csv(
         },
     )
 
-@router.get(
-    "/payment-history",
-    response_model=list[ExpenseResponse]
-)
+
 @router.get(
     "/payment-history",
     response_model=list[ExpenseResponse]
@@ -177,9 +173,6 @@ def payment_history(
     current_user: User = Depends(get_current_user),
 ):
 
-    print("========== PAYMENT HISTORY ==========")
-    print("User:", current_user.username)
-    print("Role:", current_user.role)
 
     return ExpenseService.get_paid_expenses(db)
 
@@ -284,7 +277,7 @@ def update_expense(
         )
 
         receipt_path = upload_receipt(receipt.file)
-        
+
     try:
         return ExpenseService.update(
             db=db,
