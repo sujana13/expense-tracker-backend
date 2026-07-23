@@ -41,15 +41,26 @@ class AuthService:
         )
 
         created_user = UserRepository.create(
-           db,
-           user
+             db,
+            user
         )
 
-        await EmailService.send_welcome_email(
-            email=created_user.email,
-            username=created_user.username,
-            temp_password=request.password,
-        )
+        try:
+            print(">>>> Starting welcome email...")
+
+            await EmailService.send_welcome_email(
+                email=created_user.email,
+                username=created_user.username,
+                temp_password=request.password,
+            )
+
+            print(">>>> Welcome email sent!")
+
+        except Exception as e:
+            import traceback
+
+            print(">>>> Email failed!")
+            traceback.print_exc()
 
         return created_user
 

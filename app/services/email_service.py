@@ -17,12 +17,16 @@ conf = ConnectionConfig(
 
 class EmailService:
 
+    
     @staticmethod
     async def send_welcome_email(
         email: EmailStr,
         username: str,
         temp_password: str,
     ):
+
+        print("===== SEND EMAIL FUNCTION CALLED =====")
+        print("Recipient:", email)
 
         body = f"""
 Hello {username},
@@ -56,3 +60,5 @@ HigherEd BPO Expense Tracker
         fm = FastMail(conf)
 
         await fm.send_message(message)
+
+        print("===== EMAIL SENT SUCCESSFULLY =====")
