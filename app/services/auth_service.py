@@ -78,6 +78,11 @@ class AuthService:
                 "Invalid email or password"
             )
 
+        if not user.is_active:
+             raise ValueError(
+                "Your account has been deactivated. Please contact your administrator."
+            )
+
         token = create_access_token(
             {
                 "sub": user.email,
