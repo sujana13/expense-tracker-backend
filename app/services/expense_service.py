@@ -32,7 +32,8 @@ from app.models.enums import UserRole
 from app.schemas.user import UserResponse
 from app.models.company import Company
 from app.models.department import Department
-
+from fastapi import BackgroundTasks
+from app.services.email_service import EmailService
 
 class ExpenseService:
 
@@ -47,34 +48,35 @@ class ExpenseService:
         payment_method: str,
         category_id: str,
         receipt_path: str | None,
-        current_user: User
+        current_user: User,
         ):
-            category = CategoryRepository.get_by_id(
+
+        category = CategoryRepository.get_by_id(
                db,
                category_id
             )
 
-            if not category:
-                raise ValueError(
-                "Category not found"
+        if not category:
+            raise ValueError("Category not found")
+
+        expense = Expense(
+            title=title,
+            description=description,
+            amount=amount,
+            expense_date=expense_date,
+            payment_method=payment_method,
+            category_id=category_id,
+            receipt_path=receipt_path,
+            user_id=current_user.id,
+        )
+
+        created_expense = ExpenseRepository.create(
+             db,
+             expense
             )
 
-            expense = Expense(
-                title=title,
-                description=description,
-                amount=amount,
-                expense_date=expense_date,
-                payment_method=payment_method,
-                category_id=category_id,
-                receipt_path=receipt_path,
-                user_id=current_user.id
-            )
 
-            return ExpenseRepository.create(
-               db,
-               expense
-            )
-
+        return created_expense
     
     @staticmethod
     def get_all(
@@ -353,7 +355,53 @@ class ExpenseService:
     def approve_expense(
         db: Session,
         expense_id: str,
-        current_user: User
+        current_user: User,
+        background_tasks: BackgroundTasks,
+    ):
+        if current_user.role != UserRole.MANAGER:
+            raise ValueError("Manager access required")
+
+        expense = ExpenseRepository.get_by_id(
+             db,
+             expense_id
+        )
+
+        if not expense:
+            raise ValueError("Expense not found")
+
+        if expense.status != ExpenseStatus.SUBMITTED:
+            raise ValueError("Expense already processed")
+
+        expense.status = ExpenseStatus.APPROVED
+        expense.approved_by = current_user.id
+        expense.approved_at = datetime.utcnow()
+
+        updated_expense = ExpenseRepository.update(
+            db,
+            expense
+        )
+
+    # Send email in background
+        background_tasks.add_task(
+           EmailService.send_manager_approved_email,
+           email=updated_expense.submitted_by_user.email,
+           username=updated_expense.submitted_by_user.username,
+           title=updated_expense.title,
+           category=updated_expense.category_name,
+           amount=float(updated_expense.amount),
+           expense_date=str(updated_expense.expense_date),
+           payment_method=updated_expense.payment_method,
+        )
+
+        return updated_expense
+
+    @staticmethod
+    def reject_expense(
+        db: Session,
+        expense_id: str,
+        current_user: User,
+        rejection_reason: str,
+        background_tasks: BackgroundTasks,
     ):
         if current_user.role != UserRole.MANAGER:
             raise ValueError("Manager access required")
@@ -364,57 +412,35 @@ class ExpenseService:
         )
 
         if not expense:
-            raise ValueError(
-            "Expense not found"
-        )
+            raise ValueError("Expense not found")
 
         if expense.status != ExpenseStatus.SUBMITTED:
-            raise ValueError(
-            "Expense already processed"
-        )
-
-        expense.status = ExpenseStatus.APPROVED
-        expense.approved_by = current_user.id
-        expense.approved_at = datetime.utcnow()
-
-        return ExpenseRepository.update(
-           db,
-           expense
-        )
-
-    @staticmethod
-    def reject_expense(
-        db: Session,
-        expense_id: str,
-        current_user: User
-    ):
-        if current_user.role != UserRole.MANAGER:
-            raise ValueError("Manager access required")
-
-        expense = ExpenseRepository.get_by_id(
-           db,
-           expense_id
-        )
-
-        if not expense:
-            raise ValueError(
-            "Expense not found"
-        )
-
-        if expense.status != ExpenseStatus.SUBMITTED:
-            raise ValueError(
-               "Expense already processed"
-        )
+            raise ValueError("Expense already processed")
 
         expense.status = ExpenseStatus.REJECTED
         expense.rejected_by = current_user.id
         expense.rejected_at = datetime.utcnow()
+        expense.rejection_reason = rejection_reason
 
-        return ExpenseRepository.update(
+        updated_expense = ExpenseRepository.update(
             db,
             expense
         )
 
+        background_tasks.add_task(
+            EmailService.send_manager_rejected_email,
+            email=updated_expense.submitted_by_user.email,
+            username=updated_expense.submitted_by_user.username,
+            title=updated_expense.title,
+            category=updated_expense.category_name,
+            amount=float(updated_expense.amount),
+            expense_date=str(updated_expense.expense_date),
+            payment_method=updated_expense.payment_method,
+            rejection_reason=updated_expense.rejection_reason,
+            manager=current_user.username,
+        )
+
+        return updated_expense
 
     @staticmethod
     def mark_as_paid(
@@ -423,6 +449,7 @@ class ExpenseService:
         payment_reference: str,
         payment_notes: str | None,
         current_user: User,
+        background_tasks: BackgroundTasks,
     ):
         if current_user.role != UserRole.FINANCE:
             raise ValueError("Finance access required")
@@ -447,10 +474,26 @@ class ExpenseService:
         expense.payment_reference = payment_reference
         expense.payment_notes = payment_notes
 
-        return ExpenseRepository.update(
+        updated_expense = ExpenseRepository.update(
             db,
-            expense
+           expense
          )
+
+        background_tasks.add_task(
+            EmailService.send_finance_paid_email,
+            email=updated_expense.submitted_by_user.email,
+            username=updated_expense.submitted_by_user.username,
+            title=updated_expense.title,
+            category=updated_expense.category_name,
+            amount=float(updated_expense.amount),
+            expense_date=str(updated_expense.expense_date),
+            payment_method=updated_expense.payment_method,
+            payment_reference=updated_expense.payment_reference,
+            finance=current_user.username,
+        )
+
+        return updated_expense
+
 
     @staticmethod
     def get_paid_expenses(db: Session):

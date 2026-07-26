@@ -28,9 +28,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-@app.on_event("startup")
-def startup_event():
-    seed_admin()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +40,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+def startup_event():
+    seed_admin()
 
 app.include_router(auth_router)
 app.include_router(category.router)

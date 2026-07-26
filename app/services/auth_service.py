@@ -5,25 +5,26 @@ from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate
 from app.services.email_service import EmailService
+from fastapi import BackgroundTasks
 
 class AuthService:
+
 
     @staticmethod
     async def register(
         db: Session,
-        request: UserCreate
+        request: UserCreate,
+        background_tasks: BackgroundTasks,
     ):
-        existing_user = (
-            UserRepository.get_by_email(
-               db,
-               request.email
-            )
+
+        existing_user = UserRepository.get_by_email(
+            db,
+            request.email
         )
 
         if existing_user:
-            raise ValueError(
-               "Email already registered"
-            )
+            raise ValueError("Email already registered")
+
 
         user = User(
             username=request.username,
@@ -41,26 +42,17 @@ class AuthService:
         )
 
         created_user = UserRepository.create(
-             db,
+            db,
             user
         )
 
-        try:
-            print(">>>> Starting welcome email...")
-
-            await EmailService.send_welcome_email(
-                email=created_user.email,
-                username=created_user.username,
-                temp_password=request.password,
-            )
-
-            print(">>>> Welcome email sent!")
-
-        except Exception as e:
-            import traceback
-
-            print(">>>> Email failed!")
-            traceback.print_exc()
+    
+        background_tasks.add_task(
+            EmailService.send_welcome_email,
+            email=created_user.email,
+            username=created_user.username,
+           temp_password=request.password,
+        )
 
         return created_user
 

@@ -67,3 +67,6 @@ class ExpensePayment(BaseModel):
     payment_reference: str
     payment_notes: str | None = None
 
+class RejectExpenseRequest(BaseModel):
+    rejection_reason: str
+

@@ -33,6 +33,11 @@ from fastapi.responses import StreamingResponse
 from app.models.enums import UserRole
 from app.schemas.expense import ExpensePayment
 from app.utils.cloudinary_service import upload_receipt
+from fastapi import BackgroundTasks
+from app.repositories.category_repository import CategoryRepository
+from app.services.email_service import EmailService
+
+from app.schemas.expense import RejectExpenseRequest
 
 ALLOWED_EXTENSIONS = {
     ".pdf",
@@ -46,10 +51,7 @@ router = APIRouter(
     tags=["Expenses"]
 )
 
-@router.post(
-    "",
-    response_model=ExpenseResponse
-)
+@router.post("", response_model=ExpenseResponse)
 def create_expense(
     title: str = Form(...),
     description: str | None = Form(None),
@@ -58,44 +60,60 @@ def create_expense(
     payment_method: str = Form(...),
     category_id: str = Form(...),
     receipt: UploadFile | None = File(None),
-
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-
-    receipt_path = None
-
-    if receipt and receipt.filename:
-
-        extension = Path(receipt.filename).suffix.lower()
-
-        if extension not in ALLOWED_EXTENSIONS:
-            raise HTTPException(
-            status_code=400,
-            detail="Only PDF, JPG, JPEG and PNG files are allowed."
-            )
-
-        receipt_path = upload_receipt(receipt.file)
-
     try:
 
-        return ExpenseService.create(
-           db=db,
-           title=title,
-           description=description,
-           amount=amount,
-           expense_date=expense_date,
-           payment_method=payment_method,
-           category_id=category_id,
-           receipt_path=receipt_path,
-           current_user=current_user
-    )
+        receipt_path = None
+
+        if receipt and receipt.filename:
+            extension = Path(receipt.filename).suffix.lower()
+
+            if extension not in ALLOWED_EXTENSIONS:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only PDF, JPG, JPEG and PNG files are allowed.",
+                )
+
+            receipt_path = upload_receipt(receipt.file)
+
+        created_expense = ExpenseService.create(
+            db=db,
+            title=title,
+            description=description,
+            amount=amount,
+            expense_date=expense_date,
+            payment_method=payment_method,
+            category_id=category_id,
+            receipt_path=receipt_path,
+            current_user=current_user,
+        )
+
+        category = CategoryRepository.get_by_id(
+            db,
+            category_id,
+        )
+
+        background_tasks.add_task(
+            EmailService.send_expense_created_email,
+            email=current_user.email,
+            username=current_user.username,
+            title=created_expense.title,
+            category=category.name if category else "N/A",
+            amount=created_expense.amount,
+            expense_date=str(created_expense.expense_date),
+            payment_method=created_expense.payment_method,
+            status=created_expense.status.value,
+        )
+
+        return created_expense
 
     except ValueError as e:
-
         raise HTTPException(
             status_code=400,
-            detail=str(e)
+            detail=str(e),
         )
 
 @router.get(
@@ -304,6 +322,7 @@ def update_expense(
 )
 def approve_expense(
     expense_id: str,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -311,7 +330,8 @@ def approve_expense(
         return ExpenseService.approve_expense(
             db,
             expense_id,
-            current_user
+            current_user,
+            background_tasks,
         )
 
     except ValueError as e:
@@ -326,6 +346,8 @@ def approve_expense(
 )
 def reject_expense(
     expense_id: str,
+    background_tasks: BackgroundTasks,
+    rejection_reason: str = Form(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -333,7 +355,9 @@ def reject_expense(
         return ExpenseService.reject_expense(
             db,
             expense_id,
-            current_user
+            current_user,
+            rejection_reason=rejection_reason,
+            background_tasks=background_tasks,
         )
 
     except ValueError as e:
@@ -349,6 +373,7 @@ def reject_expense(
 def mark_as_paid(
     expense_id: str,
     request: ExpensePayment,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -359,6 +384,8 @@ def mark_as_paid(
             payment_reference=request.payment_reference,
             payment_notes=request.payment_notes,
             current_user=current_user,
+            background_tasks=background_tasks,
+
         )
 
     except ValueError as e:

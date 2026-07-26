@@ -18,6 +18,7 @@ from app.models.user import User
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.schemas.user import ForgotPasswordRequest
+from fastapi import BackgroundTasks
 
 router = APIRouter(
     prefix="/auth",
@@ -26,14 +27,15 @@ router = APIRouter(
 
 
 @router.post(
-    "/register",
-    response_model=UserResponse
+    "/register"
 )
 async def register(
     request: UserCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+
 
     allowed_domain = "@higheredbpo.co.in"
 
@@ -50,16 +52,23 @@ async def register(
         )
 
     try:
-        return await AuthService.register(
+        await AuthService.register(
             db,
-            request
+            request,
+            background_tasks
         )
+        
+        return {
+            "message": "Employee created successfully"
+        }
 
     except ValueError as e:
         raise HTTPException(
             status_code=400,
             detail=str(e)
         )
+
+    
 
 @router.post(
     "/login",
