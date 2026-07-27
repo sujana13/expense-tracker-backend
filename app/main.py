@@ -21,6 +21,7 @@ from app.api.v1.endpoints import company
 from app.api.v1.endpoints import department
 from app.api.v1.endpoints import position
 from app.utils.seed_admin import seed_admin
+import socket
 
 
 app = FastAPI(
@@ -90,3 +91,15 @@ app.mount(
     StaticFiles(directory="uploads"),
     name="uploads"
 )
+
+
+@app.get("/smtp-test")
+def smtp_test():
+    try:
+        socket.create_connection(("smtp.gmail.com", 587), timeout=10)
+        return {"status": "Connected to Gmail SMTP"}
+    except Exception as e:
+        return {
+            "status": "Failed",
+            "error": str(e)
+        }
