@@ -2,6 +2,10 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
 from app.core.config import settings
 
+import resend
+
+resend.api_key = settings.RESEND_API_KEY
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -45,20 +49,14 @@ Temporary Password: {temp_password}
 Please log in and change your password immediately.
 """
 
-        message = MessageSchema(
-            subject="Welcome to HigherEd Portal",
-            recipients=[email],
-            body=body,
-            subtype="plain",
-        )
-
-        fm = FastMail(conf)
-
-        try:
-            await fm.send_message(message)
-            logger.info("✅ Welcome email sent successfully!")
-        except Exception as e:
-            logger.exception(f"❌ Email failed: {e}")
+        resend.Emails.send(
+        {
+        "from": "Expense Tracker <onboarding@resend.dev>",
+        "to": [email],
+        "subject": "Welcome to HigherEd Portal",
+        "text": body,
+    }
+)
 
 
     @staticmethod

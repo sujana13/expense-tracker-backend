@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
 
+    RESEND_API_KEY: str
+
     # Email Configuration
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
