@@ -1,4 +1,3 @@
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
 from app.core.config import settings
 
@@ -6,21 +5,6 @@ import resend
 
 resend.api_key = settings.RESEND_API_KEY
 
-import logging
-
-logger = logging.getLogger(__name__)
-
-conf = ConnectionConfig(
-    MAIL_USERNAME=settings.MAIL_USERNAME,
-    MAIL_PASSWORD=settings.MAIL_PASSWORD,
-    MAIL_FROM=settings.MAIL_FROM,
-    MAIL_PORT=settings.MAIL_PORT,
-    MAIL_SERVER=settings.MAIL_SERVER,
-    MAIL_STARTTLS=settings.MAIL_STARTTLS,
-    MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=False,
-)
 
 
 class EmailService:
@@ -31,8 +15,6 @@ class EmailService:
         username: str,
         temp_password: str,
     ):
-        logger.info("📧 Starting welcome email...")
-        logger.info(f"Recipient: {email}")
 
         body = f"""
 Hello {username},
@@ -90,16 +72,14 @@ Thank you,
 HigherEd Portal
 """
 
-        message = MessageSchema(
-            subject="Expense Submitted Successfully",
-            recipients=[email],
-            body=body,
-            subtype="plain",
-        )
-
-        fm = FastMail(conf)
-
-        await fm.send_message(message)
+        resend.Emails.send(
+    {
+        "from": "Expense Tracker <onboarding@resend.dev>",
+        "to": [email],
+        "subject": "Expense Submitted Successfully",
+        "text": body,
+    }
+)
 
     @staticmethod
     async def send_manager_approved_email(
@@ -144,16 +124,14 @@ Regards,
 HigherEd Portal
 """
 
-        message = MessageSchema(
-            subject="Expense Approved by Manager",
-            recipients=[email],
-            body=body,
-            subtype="plain",
-        )
-
-        fm = FastMail(conf)
-
-        await fm.send_message(message)
+        resend.Emails.send(
+    {
+        "from": "Expense Tracker <onboarding@resend.dev>",
+        "to": [email],
+        "subject": "Expense Approved by Manager",
+        "text": body,
+    }
+)
 
     @staticmethod
     async def send_manager_rejected_email(
@@ -193,17 +171,14 @@ Regards,
 HigherEd Portal
 """
 
-        message = MessageSchema(
-            subject="Expense Rejected by Manager",
-            recipients=[email],
-            body=body,
-            subtype="plain",
-        )
-
-        fm = FastMail(conf)
-
-        await fm.send_message(message)
-
+        resend.Emails.send(
+    {
+        "from": "Expense Tracker <onboarding@resend.dev>",
+        "to": [email],
+        "subject": "Expense Rejected by Manager",
+        "text": body,
+    }
+)
     @staticmethod
     async def send_finance_paid_email(
         email: str,
@@ -247,13 +222,11 @@ Regards,
 Finance Team
 """
 
-        message = MessageSchema(
-            subject="Expense Payment Completed",
-            recipients=[email],
-            body=body,
-            subtype="plain",
-        )
-
-        fm = FastMail(conf)
-
-        await fm.send_message(message)
+        resend.Emails.send(
+    {
+        "from": "Expense Tracker <onboarding@resend.dev>",
+        "to": [email],
+        "subject": "Expense Payment Completed",
+        "text": body,
+    }
+)
