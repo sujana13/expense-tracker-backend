@@ -7,7 +7,8 @@ from sqlalchemy import or_
 from app.models.user import User
 
 from app.models.enums import ExpenseStatus
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
+from app.models.category import Category
 
 class ExpenseRepository:
 
@@ -118,18 +119,33 @@ class ExpenseRepository:
              )
 
         if search:
-            query = query.join(Expense.submitted_by_user)
+            approved_user = aliased(User)
+
+            query = query.join(
+                Expense.submitted_by_user
+                    ).outerjoin(
+                    approved_user,
+                    Expense.approved_by == approved_user.id
+                 )
 
             query = query.filter(
-                or_(
-                    Expense.title.ilike(f"%{search}%"),
-                    Expense.description.ilike(f"%{search}%"),
-                    Expense.payment_method.ilike(f"%{search}%"),
-                    User.username.ilike(f"%{search}%"),
-                    User.employee_id.ilike(f"%{search}%"),
-                    User.email.ilike(f"%{search}%"),
-                )
+                   or_(
+                # Expense fields
+                Expense.title.ilike(f"%{search}%"),
+                Expense.description.ilike(f"%{search}%"),
+                Expense.payment_method.ilike(f"%{search}%"),
+
+                # Submitted by employee
+                User.username.ilike(f"%{search}%"),
+                User.employee_id.ilike(f"%{search}%"),
+                User.email.ilike(f"%{search}%"),
+
+                # Approved by employee
+                approved_user.username.ilike(f"%{search}%"),
+                approved_user.employee_id.ilike(f"%{search}%"),
+                approved_user.email.ilike(f"%{search}%"),
             )
+        )
         if status:
             query = query.filter(
                 Expense.status == ExpenseStatus(status)
@@ -203,17 +219,62 @@ class ExpenseRepository:
 
 
     @staticmethod
-    def get_paid_expenses(db: Session):
-        return (
-           db.query(Expense)
-           .options(
-    joinedload(Expense.submitted_by_user),
-    joinedload(Expense.approved_by_user),
-    joinedload(Expense.rejected_by_user),
-    joinedload(Expense.paid_by_user),
-)
-            .filter(
-            Expense.status == ExpenseStatus.PAID
+    def get_paid_expenses(
+        db: Session,
+        search: str | None = None,
+     ):
+        paid_user = aliased(User)
+
+        query = (
+            db.query(Expense)
+            .options(
+                joinedload(Expense.submitted_by_user),
+                joinedload(Expense.approved_by_user),
+                joinedload(Expense.rejected_by_user),
+                joinedload(Expense.paid_by_user),
             )
+            .filter(
+                Expense.status == ExpenseStatus.PAID
+            )
+        )
+
+        if search:
+            query = (
+                query
+                .join(
+                    Expense.submitted_by_user
+                )
+                .outerjoin(
+                    paid_user,
+                    Expense.paid_by == paid_user.id
+                )
+                .outerjoin(
+                    Expense.category
+                 )
+                .filter(
+                   or_(
+                    # Expense details
+                        Expense.title.ilike(f"%{search}%"),
+                        Expense.description.ilike(f"%{search}%"),
+                        Expense.payment_method.ilike(f"%{search}%"),
+                        Expense.payment_reference.ilike(f"%{search}%"),
+                        Expense.payment_notes.ilike(f"%{search}%"),
+
+                    # Employee who submitted the expense
+                        User.username.ilike(f"%{search}%"),
+                        User.employee_id.ilike(f"%{search}%"),
+                        User.email.ilike(f"%{search}%"),
+
+                    # Person who released the payment
+                        paid_user.username.ilike(f"%{search}%"),
+                        paid_user.employee_id.ilike(f"%{search}%"),
+                        paid_user.email.ilike(f"%{search}%"),
+                    )
+                )
+            )
+
+        return (
+            query
+            .order_by(Expense.paid_at.desc())
             .all()
-    )
+        )

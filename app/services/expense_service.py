@@ -496,6 +496,11 @@ class ExpenseService:
 
 
     @staticmethod
-    def get_paid_expenses(db: Session):
-
-        return ExpenseRepository.get_paid_expenses(db)
+    def get_paid_expenses(
+        db: Session,
+        search: str | None = None,
+    ):
+        return ExpenseRepository.get_paid_expenses(
+        db,
+        search=search,
+    )

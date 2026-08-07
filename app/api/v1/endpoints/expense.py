@@ -187,13 +187,14 @@ def export_csv(
     response_model=list[ExpenseResponse]
 )
 def payment_history(
+    search: str | None = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-
-
-    return ExpenseService.get_paid_expenses(db)
-
+    return ExpenseService.get_paid_expenses(
+        db,
+        search=search,
+    )
 
 @router.get(
     "",
