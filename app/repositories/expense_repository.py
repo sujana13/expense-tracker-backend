@@ -4,6 +4,7 @@ from app.models.expense import Expense
 from datetime import date
 
 from sqlalchemy import or_
+from app.models.user import User
 
 from app.models.enums import ExpenseStatus
 from sqlalchemy.orm import joinedload
@@ -117,14 +118,18 @@ class ExpenseRepository:
              )
 
         if search:
+            query = query.join(Expense.submitted_by_user)
+
             query = query.filter(
-               or_(
-                   Expense.title.ilike(f"%{search}%"),
-                   Expense.description.ilike(f"%{search}%"),
+                or_(
+                    Expense.title.ilike(f"%{search}%"),
+                    Expense.description.ilike(f"%{search}%"),
                     Expense.payment_method.ilike(f"%{search}%"),
+                    User.username.ilike(f"%{search}%"),
+                    User.employee_id.ilike(f"%{search}%"),
+                    User.email.ilike(f"%{search}%"),
                 )
             )
-
         if status:
             query = query.filter(
                 Expense.status == ExpenseStatus(status)

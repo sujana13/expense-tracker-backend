@@ -71,6 +71,7 @@ class UserResponse(BaseModel):
     location: str | None = None
     birth_date: date | None = None
     date_of_joining: date | None = None
+    profile_picture: str | None = None
 
     
 class TokenResponse(BaseModel):

@@ -25,6 +25,9 @@ from sqlalchemy import text
 from app.database.dependencies import get_current_user
 from app.models.user import User
 
+from fastapi import UploadFile, File
+import cloudinary.uploader
+
 
 router = APIRouter(
     prefix="/users",
@@ -55,6 +58,50 @@ def get_current_user_profile(
         current_user
     )
 
+@router.post("/upload-profile-picture")
+async def upload_profile_picture(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Delete old image
+    if current_user.profile_picture_public_id:
+        cloudinary.uploader.destroy(
+            current_user.profile_picture_public_id
+        )
+
+    # Upload new image
+    result = cloudinary.uploader.upload(
+    file.file,
+    folder="profile_pictures",
+
+    transformation=[
+        {
+            "width": 300,
+            "height": 300,
+            "crop": "fill",
+            "gravity": "face"
+        },
+        {
+            "quality": "auto"
+        },
+        {
+            "fetch_format": "auto"
+        }
+    ]
+)
+
+    # Save URL and Public ID
+    current_user.profile_picture = result["secure_url"]
+    current_user.profile_picture_public_id = result["public_id"]
+
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Profile picture updated successfully",
+        "profile_picture": current_user.profile_picture,
+    }
 
 @router.put("/change-password")
 def change_password(

@@ -220,4 +220,5 @@ class UserService:
             location=user.location,
             birth_date=user.birth_date,
             date_of_joining=user.date_of_joining,
+            profile_picture=user.profile_picture,
         )

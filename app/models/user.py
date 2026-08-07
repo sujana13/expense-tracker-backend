@@ -95,6 +95,9 @@ class User(Base):
     back_populates="users"
     )
 
+    profile_picture = Column(String, nullable=True)
+    profile_picture_public_id = Column(String, nullable=True)
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()
